@@ -108,3 +108,44 @@ class ConferenceQueryForms(messages.Message):
     """ConferenceQueryForms -- multiple ConferenceQueryForm inbound form message"""
     filters = messages.MessageField(ConferenceQueryForm, 1, repeated=True)
 
+class Speaker(ndb.Model):
+    """Speaker -- User profile object"""
+    name = ndb.StringProperty(required=True)
+    bio = ndb.TextProperty()
+    url = ndb.StringProperty(indexed=False)
+
+class SpeakerForm(messages.Message):
+    """SpeakerForm -- Speaker form message"""
+    name = messages.StringField(1)
+    bio = messages.StringField(2)
+    url = messages.StringField(3)
+    websafeKey = messages.StringField(4)
+
+class SpeakerForms(messages.Message):
+    """SpeakerForms -- multiple Speakers outbound form message"""
+    items = messages.MessageField(SpeakerForm, 1, repeated=True)
+
+class SessionType(messages.Enum):
+     """SessionType -- type of session enumeration value"""
+     NOT_SPECIFIED = 1
+     LECTURE = 2
+     KEYNOTE = 3
+     WORKSHOP = 4
+     SEMINAR = 5
+     SYMPOSIUM = 6
+     COLLOQUIUM = 7
+     ROUNDTABLE = 8
+     CONCLAVE = 9
+     CONSUMER_SHOW = 10
+     EXHIBIT = 11
+     FUNDRAISER = 12
+
+class Session(ndb.Model):
+    """Conference -- Conference object"""
+    name            = ndb.StringProperty(required=True)
+    highlights      = ndb.StringProperty(repeated=True)
+    speakerId       = ndb.StringProperty(required=True)
+    typeOfSession   = ndb.StringProperty(default='NOT_SPECIFIED')
+    duration        = ndb.IntegerProperty() # In minutes
+    date            = ndb.DateProperty()
+    startTime       = ndb.TimeProperty()

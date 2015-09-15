@@ -36,6 +36,9 @@ from models import ConferenceForms
 from models import ConferenceQueryForm
 from models import ConferenceQueryForms
 from models import TeeShirtSize
+from models import Speaker
+from models import SpeakerForm
+from models import SpeakerForms
 
 from settings import WEB_CLIENT_ID
 from settings import ANDROID_CLIENT_ID
@@ -55,7 +58,7 @@ DEFAULTS = {
     "city": "Default City",
     "maxAttendees": 0,
     "seatsAvailable": 0,
-    "topics": [ "Default", "Topic" ],
+    "topics": [ "Default", "Topic" ]
 }
 
 OPERATORS = {
@@ -71,7 +74,7 @@ FIELDS =    {
             'CITY': 'city',
             'TOPIC': 'topics',
             'MONTH': 'month',
-            'MAX_ATTENDEES': 'maxAttendees',
+            'MAX_ATTENDEES': 'maxAttendees'
             }
 
 CONF_GET_REQUEST = endpoints.ResourceContainer(
@@ -83,6 +86,22 @@ CONF_POST_REQUEST = endpoints.ResourceContainer(
     ConferenceForm,
     websafeConferenceKey=messages.StringField(1),
 )
+
+DEFAULTS_SPEAKER = {
+    'bio': '',
+    'url': ''
+}
+
+SPEAKER_GET_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeSpeakerKey=messages.StringField(1),
+)
+
+SPEAKER_POST_REQUEST = endpoints.ResourceContainer(
+    SpeakerForm,
+    websafeSpeakerKey=messages.StringField(1),
+)
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -550,5 +569,100 @@ class ConferenceApi(remote.Service):
             items=[self._copyConferenceToForm(conf, "") for conf in q]
         )
 
+# - - - Speaker objects - - - - - - - - - - - - - - - - -
+    def _copySpeakerToForm(self, speaker):
+        """Copy relevant fields from Speaker to SpeakerForm."""
+        speaker_form = SpeakerForm()
+        for field in speaker_form.all_fields():
+            if hasattr(speaker, field.name):
+                setattr(speaker_form, field.name, getattr(speaker, field.name))
+            elif field.name == 'websafeKey':
+                setattr(speaker_form, field.name, speaker.key.urlsafe())
+        speaker_form.check_initialized()
+        return speaker_form
+
+    def _createSpeakerObject(self, request):
+        """Create or update Speaker object, returning Speaker/request."""
+        # preload necessary data items
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+
+        if not request.name:
+            raise endpoints.BadRequestException("Speaker 'name' field required")
+
+        # copy Speaker/ProtoRPC Message into dict
+        data = {field.name: getattr(request, field.name) \
+                for field in request.all_fields()}
+        del data['websafeKey']
+
+        # add defaults for missing values (both data model & outbound Message)
+        for df in DEFAULTS_SPEAKER:
+            if data.get(df, None) is None:
+                data[df] = DEFAULTS_SPEAKER[df]
+                setattr(request, df, DEFAULTS_SPEAKER[df])
+
+        # create Speaker and return updated SpeakerForm with websafeKey
+        request.websafeKey = Speaker(**data).put().urlsafe()
+        return request
+
+    def _updateSpeakerObject(self, request):
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+
+        # update existing conference
+        speaker = ndb.Key(urlsafe=request.websafeSpeakerKey).get()
+        # check that conference exists
+        if not speaker:
+            raise endpoints.NotFoundException(
+                'No speaker found with key: %s' % request.websafeSpeakerKey)
+
+        # Not getting all the fields, so don't create a new object; just
+        # copy relevant fields from SpeakerForm to Speaker object
+        for field in request.all_fields():
+            data = getattr(request, field.name)
+            # only copy fields where we get data
+            if data is not None:
+                setattr(speaker, field.name, data)
+        speaker.put()
+        return self._copySpeakerToForm(speaker)
+
+    @endpoints.method(SpeakerForm, SpeakerForm,
+            path='speaker/new',
+            http_method='POST', name='createSpeaker')
+    def createSpeaker(self, request):
+        """Create new speaker."""
+        return self._createSpeakerObject(request)
+
+    @endpoints.method(SPEAKER_POST_REQUEST, SpeakerForm,
+            path='speaker/update/{websafeSpeakerKey}',
+            http_method='PUT', name='updateSpeaker')
+    def updateSpeaker(self, request):
+        """Update speaker w/provided fields & return w/updated info."""
+        return self._updateSpeakerObject(request)
+
+    @endpoints.method(SPEAKER_GET_REQUEST, SpeakerForm,
+            path='speaker/get/{websafeSpeakerKey}',
+            http_method='GET', name='getSpeaker')
+    def getSpeaker(self, request):
+        """Return requested speaker (by websafeSpeakerKey)."""
+        # get Conference object from request; bail if not found
+        speaker = ndb.Key(urlsafe=request.websafeSpeakerKey).get()
+        if not speaker:
+            raise endpoints.NotFoundException(
+                'No speaker found with key: %s' % request.websafeSpeakerKey)
+        return self._copySpeakerToForm(speaker)
+
+    @endpoints.method(message_types.VoidMessage, SpeakerForms,
+            path='speaker/all',
+            http_method='GET', name='getAllSpeakers')
+    def getAllSpeakers(self, request):
+        """Return all speakers."""
+        speakers = Speaker.query()
+
+        return SpeakerForms(
+            items=[self._copySpeakerToForm(speaker) for speaker in speakers]
+        )
 
 api = endpoints.api_server([ConferenceApi]) # register API
