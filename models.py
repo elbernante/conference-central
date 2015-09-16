@@ -141,11 +141,33 @@ class SessionType(messages.Enum):
      FUNDRAISER = 12
 
 class Session(ndb.Model):
-    """Conference -- Conference object"""
-    name            = ndb.StringProperty(required=True)
-    highlights      = ndb.StringProperty(repeated=True)
-    speakerId       = ndb.StringProperty(required=True)
-    typeOfSession   = ndb.StringProperty(default='NOT_SPECIFIED')
-    duration        = ndb.IntegerProperty() # In minutes
-    date            = ndb.DateProperty()
-    startTime       = ndb.TimeProperty()
+    """Session -- Session object"""
+    name                = ndb.StringProperty(required=True)
+    highlights          = ndb.StringProperty(repeated=True)
+    websafeSpeakerKey   = ndb.StringProperty(required=True)
+    typeOfSession       = ndb.StringProperty(default='NOT_SPECIFIED')
+    duration            = ndb.IntegerProperty() # In minutes
+    date                = ndb.DateProperty()
+    startTime           = ndb.TimeProperty()
+
+class SessionForm(messages.Message):
+    """SessionForm -- Session outbound form message"""
+    name            = messages.StringField(1)
+    highlights      = messages.StringField(2, repeated=True)
+    speaker         = messages.MessageField('SpeakerForm', 3)
+    typeOfSession   = messages.EnumField('SessionType', 4)
+    duration        = messages.IntegerField(5) # In minutes
+    date            = messages.StringField(6) #DateTimeField()
+    startTime       = messages.StringField(7) #DateTimeField()
+    websafeKey      = messages.StringField(8)
+    conference      = messages.MessageField('ConferenceForm', 9)
+
+class SessionEditForm(messages.Message):
+    """SessionEditForm -- Session inbound form message"""
+    name              = messages.StringField(1, required=True)
+    highlights        = messages.StringField(2, repeated=True)
+    websafeSpeakerKey = messages.StringField(3, required=True)
+    typeOfSession     = messages.EnumField('SessionType', 4)
+    duration          = messages.IntegerField(5) # In minutes
+    date              = messages.StringField(6) #DateTimeField()
+    startTime         = messages.StringField(7) #DateTimeField()
