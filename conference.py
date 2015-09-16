@@ -118,6 +118,11 @@ SESSION_POST_REQUEST = endpoints.ResourceContainer(
     websafeConferenceKey=messages.StringField(1),
 )
 
+SESSION_GET_REQUEST_BY_TYPE = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeConferenceKey=messages.StringField(1),
+    typeOfSession=messages.EnumField(SessionType, 2)
+)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
@@ -597,6 +602,7 @@ class ConferenceApi(remote.Service):
         speaker_form.check_initialized()
         return speaker_form
 
+
     def _createSpeakerObject(self, request):
         """Create or update Speaker object, returning Speaker/request."""
         # preload necessary data items
@@ -622,6 +628,7 @@ class ConferenceApi(remote.Service):
         request.websafeKey = Speaker(**data).put().urlsafe()
         return request
 
+
     def _updateSpeakerObject(self, request):
         user = endpoints.get_current_user()
         if not user:
@@ -644,6 +651,7 @@ class ConferenceApi(remote.Service):
         speaker.put()
         return self._copySpeakerToForm(speaker)
 
+
     @endpoints.method(SpeakerForm, SpeakerForm,
             path='speaker/new',
             http_method='POST', name='createSpeaker')
@@ -651,12 +659,14 @@ class ConferenceApi(remote.Service):
         """Create new speaker."""
         return self._createSpeakerObject(request)
 
+
     @endpoints.method(SPEAKER_POST_REQUEST, SpeakerForm,
             path='speaker/update/{websafeSpeakerKey}',
             http_method='PUT', name='updateSpeaker')
     def updateSpeaker(self, request):
         """Update speaker w/provided fields & return w/updated info."""
         return self._updateSpeakerObject(request)
+
 
     @endpoints.method(SPEAKER_GET_REQUEST, SpeakerForm,
             path='speaker/get/{websafeSpeakerKey}',
@@ -670,6 +680,7 @@ class ConferenceApi(remote.Service):
                 'No speaker found with key: %s' % request.websafeSpeakerKey)
         return self._copySpeakerToForm(speaker)
 
+
     @endpoints.method(message_types.VoidMessage, SpeakerForms,
             path='speaker/all',
             http_method='GET', name='getAllSpeakers')
@@ -680,6 +691,7 @@ class ConferenceApi(remote.Service):
         return SpeakerForms(
             items=[self._copySpeakerToForm(speaker) for speaker in speakers]
         )
+
 
 # - - - Session objects - - - - - - - - - - - - - - - - -
     def _copySessionToForm(self, session,
@@ -761,6 +773,7 @@ class ConferenceApi(remote.Service):
         session_form.check_initialized()
         return session_form
 
+
     def _createSessionObject(self, request):
         """Create or update Session object, returning SessionForm/request."""
         # check logged in user
@@ -825,12 +838,14 @@ class ConferenceApi(remote.Service):
 
         return self._copySessionToForm(session_object, speaker, conf)
 
+
     @endpoints.method(SESSION_POST_REQUEST, SessionForm,
         path='session/new/{websafeConferenceKey}',
         http_method='POST', name='createSession')
     def createSession(self, request):
         """Create new session in a conference"""
         return self._createSessionObject(request)
+
 
     @endpoints.method(CONF_GET_REQUEST, SessionForms,
         path='session/get/conference/{websafeConferenceKey}',
@@ -855,6 +870,35 @@ class ConferenceApi(remote.Service):
         sessions = Session.query(ancestor=conf.key)
 
         # return sesions
+        return SessionForms(
+            items=[self._copySessionToForm(session, confForm=conference_form) \
+                    for session in sessions]
+        )
+
+
+    @endpoints.method(SESSION_GET_REQUEST_BY_TYPE, SessionForms,
+        path='session/get/conference/{websafeConferenceKey}/{typeOfSession}',
+        http_method='GET', name='getConferenceSessionsByType')
+    def getConferenceSessionsByType(self, request):
+        """Returns all session of the specified type in the conference"""
+        conf = ndb.Key(urlsafe=request.websafeConferenceKey).get()
+        if not conf:
+            raise endpoints.NotFoundException(
+                'No conference found for key: {}' \
+                    .format(request.websafeConferenceKey))
+
+        # get organizer display name
+        organizer = conf.key.parent().get()
+        displayName = getattr(organizer, 'displayName') if organizer else ''
+
+        # generate ConferenceForm once for all sessions
+        conference_form = self._copyConferenceToForm(conf, displayName)
+
+        # create session query by ancestor then by property
+        sessions = Session.query(ancestor=conf.key) \
+            .filter(Session.typeOfSession==str(request.typeOfSession))
+
+         # return sesions
         return SessionForms(
             items=[self._copySessionToForm(session, confForm=conference_form) \
                     for session in sessions]
