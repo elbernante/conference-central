@@ -41,6 +41,7 @@ from models import SpeakerForm
 from models import SpeakerForms
 from models import Session
 from models import SessionForm
+from models import SessionForms
 from models import SessionEditForm
 from models import SessionType
 
@@ -682,9 +683,26 @@ class ConferenceApi(remote.Service):
 
 # - - - Session objects - - - - - - - - - - - - - - - - -
     def _copySessionToForm(self, session,
-                            speaker=None,
-                            conference=None, displayName=''):
-        """Copy relevant fields from Session to SessionForm."""
+                            speakerForm=None, speaker=None,
+                            confForm=None, conference=None, displayName=''):
+        """Copy relevant fields from Session to SessionForm.
+
+        `speakerForm` and `speaker` are both optional. They should represent the
+        speaker for the session. If `speakerForm` is present, it is directly
+        attached to SessionForm. If `speaker` is present, a `SpeakerForm` is
+        generated from speaker. If both are present, `speakerForm` takes
+        precedence. If none of them are supplied, speaker object is fetched from
+        datastore using `websafeSpeakerKey` propert of `session`.
+
+        `confForm`, `conference`, and `displayName` are all optional. They
+        should represent the conference from where the session belongs to. If
+        `confForm` is present, it is directly attached to SessionForm. If
+        `conference` is present, a `ConferenceForm` is generated from
+        conference. If both are present, `confForm` takes precedence. If none of
+        them are supplied, conference object is fetched from datastore using
+        the parent attribute of session. `displayName` is processed the same way
+        as `conference`.
+        """
         session_form = SessionForm()
         for field in session_form.all_fields():
             if hasattr(session, field.name):
@@ -712,28 +730,34 @@ class ConferenceApi(remote.Service):
             elif field.name == 'websafeKey':
                 setattr(session_form, field.name, session.key.urlsafe())
             elif field.name == 'speaker':
-                s_speaker = speaker if speaker else \
-                            ndb.Key(urlsafe=getattr(session, field.name)).get()
-                if s_speaker:
-                    setattr(
-                        session_form,
-                        field.name,
-                        self._copySpeakerToForm(s_speaker)
-                    )
+                s_speakerForm = speakerForm
+                if not s_speakerForm:
+                    s_speaker = speaker if speaker else \
+                            ndb.Key(urlsafe=getattr(
+                                                session,
+                                                'websafeSpeakerKey')
+                            ).get()
+                    if s_speaker:
+                        s_speakerForm = self._copySpeakerToForm(s_speaker)
+                if s_speakerForm:
+                    setattr(session_form, field.name, s_speakerForm)
             elif field.name == 'conference':
-                s_conf = conference if conference else \
-                            session.key.parent().get()
-                conf_disp_name = displayName
-                if not conf_disp_name and s_conf:
-                    prof = s_conf.key.parent().get()
-                    conf_disp_name = getattr(prof, 'displayName') \
-                                        if prof else ''
-                if s_conf:
-                    setattr(
-                        session_form,
-                        field.name,
-                        self._copyConferenceToForm(s_conf, conf_disp_name)
-                    )
+                s_conferenceForm = confForm
+                if not s_conferenceForm:
+                    s_conf = conference if conference else \
+                                session.key.parent().get()
+                    conf_disp_name = displayName
+                    if not conf_disp_name and s_conf:
+                        prof = s_conf.key.parent().get()
+                        conf_disp_name = getattr(prof, 'displayName') \
+                                            if prof else ''
+                    if s_conf:
+                        s_conferenceForm = self._copyConferenceToForm(
+                                                s_conf,
+                                                conf_disp_name
+                                            )
+                if s_conferenceForm:
+                    setattr(session_form, field.name, s_conferenceForm)
         session_form.check_initialized()
         return session_form
 
@@ -807,5 +831,33 @@ class ConferenceApi(remote.Service):
     def createSession(self, request):
         """Create new session in a conference"""
         return self._createSessionObject(request)
+
+    @endpoints.method(CONF_GET_REQUEST, SessionForms,
+        path='session/get/conference/{websafeConferenceKey}',
+        http_method='GET', name='getConferenceSessions')
+    def getConferenceSessions(self, request):
+        """Returns all sessions of the specified conference"""
+        # get target conference
+        conf = ndb.Key(urlsafe=request.websafeConferenceKey).get()
+        if not conf:
+            raise endpoints.NotFoundException(
+                'No conference found for key: {}' \
+                    .format(request.websafeConferenceKey))
+
+        # get organizer display name
+        organizer = conf.key.parent().get()
+        displayName = getattr(organizer, 'displayName') if organizer else ''
+
+        # generate ConferenceForm once for all sessions
+        conference_form = self._copyConferenceToForm(conf, displayName)
+
+        # create ancestor query for the target conference
+        sessions = Session.query(ancestor=conf.key)
+
+        # return sesions
+        return SessionForms(
+            items=[self._copySessionToForm(session, confForm=conference_form) \
+                    for session in sessions]
+        )
 
 api = endpoints.api_server([ConferenceApi]) # register API
