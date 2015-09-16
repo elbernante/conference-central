@@ -133,6 +133,20 @@ SESSION_GET_REQUEST_BY_SPEAKER = endpoints.ResourceContainer(
     message_types.VoidMessage,
     websafeSpeakerKey=messages.StringField(1),
 )
+
+SESSION_GET_REQUEST_BY_DURATION = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeConferenceKey=messages.StringField(1),
+    duration=messages.IntegerField(2)
+)
+
+SESSION_GET_REQUEST_BY_DATE = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeConferenceKey=messages.StringField(1),
+    startDate=messages.StringField(2), # DateTimeField()
+    endDate=messages.StringField(3)    # DateTimeField()
+)
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
@@ -857,13 +871,12 @@ class ConferenceApi(remote.Service):
         return self._createSessionObject(request)
 
 
-    @endpoints.method(CONF_GET_REQUEST, SessionForms,
-        path='session/get/conference/{websafeConferenceKey}',
-        http_method='GET', name='getConferenceSessions')
-    def getConferenceSessions(self, request):
-        """Returns all sessions of the specified conference"""
+    def _get_sessions_in_conf(self, websafeConferenceKey):
+        """Returns a query and conference form for all sessions in a conference.
+        Raises a NotFoundException if conference does not exists.
+        """
         # get target conference
-        conf = ndb.Key(urlsafe=request.websafeConferenceKey).get()
+        conf = ndb.Key(urlsafe=websafeConferenceKey).get()
         if not conf:
             raise endpoints.NotFoundException(
                 'No conference found for key: {}' \
@@ -879,6 +892,18 @@ class ConferenceApi(remote.Service):
         # create ancestor query for the target conference
         sessions = Session.query(ancestor=conf.key)
 
+        return sessions, conference_form
+
+
+    @endpoints.method(CONF_GET_REQUEST, SessionForms,
+        path='session/get/conference/{websafeConferenceKey}',
+        http_method='GET', name='getConferenceSessions')
+    def getConferenceSessions(self, request):
+        """Returns all sessions of the specified conference"""
+
+        (sessions, conference_form) = \
+                    self._get_sessions_in_conf(request.websafeConferenceKey)
+
         # return sesions
         return SessionForms(
             items=[self._copySessionToForm(session, confForm=conference_form) \
@@ -891,22 +916,14 @@ class ConferenceApi(remote.Service):
         http_method='GET', name='getConferenceSessionsByType')
     def getConferenceSessionsByType(self, request):
         """Returns all session of the specified type in the conference"""
-        conf = ndb.Key(urlsafe=request.websafeConferenceKey).get()
-        if not conf:
-            raise endpoints.NotFoundException(
-                'No conference found for key: {}' \
-                    .format(request.websafeConferenceKey))
 
-        # get organizer display name
-        organizer = conf.key.parent().get()
-        displayName = getattr(organizer, 'displayName') if organizer else ''
+        (sessions, conference_form) = \
+                    self._get_sessions_in_conf(request.websafeConferenceKey)
 
-        # generate ConferenceForm once for all sessions
-        conference_form = self._copyConferenceToForm(conf, displayName)
-
-        # create session query by ancestor then by property
-        sessions = Session.query(ancestor=conf.key) \
-            .filter(Session.typeOfSession==str(request.typeOfSession))
+        # filter session query by property
+        sessions = sessions.filter(
+                        Session.typeOfSession==str(request.typeOfSession)
+                   )
 
          # return sesions
         return SessionForms(
@@ -926,8 +943,8 @@ class ConferenceApi(remote.Service):
         speaker = ndb.Key(urlsafe=request.websafeSpeakerKey).get()
         if not speaker:
             raise endpoints.NotFoundException(
-                'No speaker found for key: {}' \
-                    .format(request.websafeSpeakerKey))
+                'No speaker found for key: {}'.format(request.websafeSpeakerKey)
+            )
         speaker_form = self._copySpeakerToForm(speaker)
 
         # create session query by property
@@ -940,6 +957,62 @@ class ConferenceApi(remote.Service):
             items=[self._copySessionToForm(session, speakerForm=speaker_form) \
                     for session in sessions]
         )
+
+
+    @endpoints.method(SESSION_GET_REQUEST_BY_DURATION, SessionForms,
+        path='session/get/duration/{websafeConferenceKey}/{duration}',
+        http_method='GET', name='getConferenceSessionsByDuration')
+    def getConferenceSessionsByDuration(self, request):
+        """Returns all sessions in a conference that don't last longer than x
+        minutes
+        """
+        (sessions, conference_form) = \
+                    self._get_sessions_in_conf(request.websafeConferenceKey)
+
+        # filter session query by property
+        sessions = sessions.filter(
+                        Session.duration<=int(request.duration)
+                   )
+
+         # return sesions
+        return SessionForms(
+            items=[self._copySessionToForm(session, confForm=conference_form) \
+                    for session in sessions]
+        )
+
+
+    @endpoints.method(SESSION_GET_REQUEST_BY_DATE, SessionForms,
+        path='session/get/date/{websafeConferenceKey}/{startDate}/{endDate}',
+        http_method='GET', name='getConferenceSessionsByDate')
+    def getConferenceSessionsByDate(self, request):
+        """Returns all sessions in a conference that start is happening between
+        a given date range
+        """
+
+        (sessions, conference_form) = \
+                    self._get_sessions_in_conf(request.websafeConferenceKey)
+
+        try:
+            begin = datetime.strptime(request.startDate[:10], "%Y-%m-%d").date()
+            end = datetime.strptime(request.endDate[:10], "%Y-%m-%d").date()
+        except ValueError:
+            raise endpoints.BadRequestException(
+                    "Invalid date supplied. Use format YYYY-MM-DD.")
+
+        if begin > end:
+            raise endpoints.BadRequestException(
+                    "Start date should come before end date.")
+
+        # filter session query by property
+        sessions = sessions.filter(Session.date>=begin) \
+                    .filter(Session.date<=end)
+
+         # return sesions
+        return SessionForms(
+            items=[self._copySessionToForm(session, confForm=conference_form) \
+                    for session in sessions]
+        )
+        return SessionForms()
 
 
     @endpoints.method(SESSION_GET_REQUEST, BooleanMessage,
@@ -982,5 +1055,8 @@ class ConferenceApi(remote.Service):
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
         )
+
+
+
 
 api = endpoints.api_server([ConferenceApi]) # register API
