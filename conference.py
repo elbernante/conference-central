@@ -943,12 +943,11 @@ class ConferenceApi(remote.Service):
 
 
     @endpoints.method(SESSION_GET_REQUEST, BooleanMessage,
-        path='session/addtowishlist/{websafeSessionKey}',
+        path='user/session/wishlist/add/{websafeSessionKey}',
         http_method='POST', name='addSessionToWishlist')
     def addSessionToWishlist(self, request):
         """Adds the session to the user's list of sessions they are interested
         in attending"""
-        # retval = None
         prof = self._getProfileFromUser() # get user Profile
 
         # get target session
@@ -967,5 +966,21 @@ class ConferenceApi(remote.Service):
 
         return BooleanMessage(data=True)
 
+
+    @endpoints.method(message_types.VoidMessage, SessionForms,
+        path='user/session/wishlist',
+        http_method='GET', name='getSessionsInWishlist')
+    def getSessionsInWishlist(self, request):
+        """Returns all the sessions the user is interested in attending"""
+        prof = self._getProfileFromUser() # get user Profile
+
+        s_keys = [(ndb.Key(urlsafe=wish_key)) \
+                        for wish_key in prof.sessionKeysWishList]
+        sessions = ndb.get_multi(s_keys)
+
+        # return sesions
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in sessions]
+        )
 
 api = endpoints.api_server([ConferenceApi]) # register API
