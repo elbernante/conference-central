@@ -118,6 +118,11 @@ SESSION_POST_REQUEST = endpoints.ResourceContainer(
     websafeConferenceKey=messages.StringField(1),
 )
 
+SESSION_GET_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeSessionKey=messages.StringField(1)
+)
+
 SESSION_GET_REQUEST_BY_TYPE = endpoints.ResourceContainer(
     message_types.VoidMessage,
     websafeConferenceKey=messages.StringField(1),
@@ -909,6 +914,7 @@ class ConferenceApi(remote.Service):
                     for session in sessions]
         )
 
+
     @endpoints.method(SESSION_GET_REQUEST_BY_SPEAKER, SessionForms,
         path='session/get/speaker/{websafeSpeakerKey}',
         http_method='GET', name='getSessionsBySpeaker')
@@ -934,5 +940,32 @@ class ConferenceApi(remote.Service):
             items=[self._copySessionToForm(session, speakerForm=speaker_form) \
                     for session in sessions]
         )
+
+
+    @endpoints.method(SESSION_GET_REQUEST, BooleanMessage,
+        path='session/addtowishlist/{websafeSessionKey}',
+        http_method='POST', name='addSessionToWishlist')
+    def addSessionToWishlist(self, request):
+        """Adds the session to the user's list of sessions they are interested
+        in attending"""
+        # retval = None
+        prof = self._getProfileFromUser() # get user Profile
+
+        # get target session
+        s_key = request.websafeSessionKey
+        session = ndb.Key(urlsafe=s_key).get()
+        if not session:
+            raise endpoints.NotFoundException(
+                'No session found with key: {}'.format(s_key))
+
+        # check if already in wishlist
+        if s_key in prof.sessionKeysWishList:
+            raise ConflictException("The session is already in your wishlist.")
+
+        prof.sessionKeysWishList.append(s_key)
+        prof.put()
+
+        return BooleanMessage(data=True)
+
 
 api = endpoints.api_server([ConferenceApi]) # register API
