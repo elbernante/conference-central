@@ -123,6 +123,11 @@ SESSION_GET_REQUEST_BY_TYPE = endpoints.ResourceContainer(
     websafeConferenceKey=messages.StringField(1),
     typeOfSession=messages.EnumField(SessionType, 2)
 )
+
+SESSION_GET_REQUEST_BY_SPEAKER = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeSpeakerKey=messages.StringField(1),
+)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
@@ -901,6 +906,32 @@ class ConferenceApi(remote.Service):
          # return sesions
         return SessionForms(
             items=[self._copySessionToForm(session, confForm=conference_form) \
+                    for session in sessions]
+        )
+
+    @endpoints.method(SESSION_GET_REQUEST_BY_SPEAKER, SessionForms,
+        path='session/get/speaker/{websafeSpeakerKey}',
+        http_method='GET', name='getSessionsBySpeaker')
+    def getSessionsBySpeaker(self, request):
+        """Given a speaker, return all sessions given by this particular
+        speaker, across all conferences
+        """
+        # get target speaker
+        speaker = ndb.Key(urlsafe=request.websafeSpeakerKey).get()
+        if not speaker:
+            raise endpoints.NotFoundException(
+                'No speaker found for key: {}' \
+                    .format(request.websafeSpeakerKey))
+        speaker_form = self._copySpeakerToForm(speaker)
+
+        # create session query by property
+        sessions = Session.query(
+                    Session.websafeSpeakerKey==request.websafeSpeakerKey
+        )
+
+        # return sesions
+        return SessionForms(
+            items=[self._copySessionToForm(session, speakerForm=speaker_form) \
                     for session in sessions]
         )
 
