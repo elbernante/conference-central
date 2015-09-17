@@ -51,6 +51,7 @@ from settings import IOS_CLIENT_ID
 from settings import ANDROID_AUDIENCE
 
 from utils import getUserId
+from utils import MultiInequalityQuery
 
 EMAIL_SCOPE = endpoints.EMAIL_SCOPE
 API_EXPLORER_CLIENT_ID = endpoints.API_EXPLORER_CLIENT_ID
@@ -1007,12 +1008,11 @@ class ConferenceApi(remote.Service):
         sessions = sessions.filter(Session.date>=begin) \
                     .filter(Session.date<=end)
 
-         # return sesions
+        # return sesions
         return SessionForms(
             items=[self._copySessionToForm(session, confForm=conference_form) \
                     for session in sessions]
         )
-        return SessionForms()
 
 
     @endpoints.method(SESSION_GET_REQUEST, BooleanMessage,
@@ -1056,6 +1056,20 @@ class ConferenceApi(remote.Service):
             items=[self._copySessionToForm(session) for session in sessions]
         )
 
+
+    @endpoints.method(message_types.VoidMessage, SessionForms,
+        path='multiinequalityplayground',
+        http_method='GET', name='multiInequalityPlayground')
+    def multiInequalityPlayground(self, request):
+        sessions = MultiInequalityQuery(Session) \
+            .filter(Session.typeOfSession!='WORKSHOP') \
+            .filter(Session.startTime<=datetime.strptime('19:00', "%H:%M").time()) \
+            .filter(Session.startTime>=datetime.strptime('17:00', "%H:%M").time())
+
+        return SessionForms(
+            items=[self._copySessionToForm(session) \
+                    for session in sessions]
+        )
 
 
 
