@@ -51,7 +51,7 @@ from settings import IOS_CLIENT_ID
 from settings import ANDROID_AUDIENCE
 
 from utils import getUserId
-from utils import MultiInequalityQuery
+from utils import MultiPropInequality
 
 EMAIL_SCOPE = endpoints.EMAIL_SCOPE
 API_EXPLORER_CLIENT_ID = endpoints.API_EXPLORER_CLIENT_ID
@@ -1061,7 +1061,7 @@ class ConferenceApi(remote.Service):
         path='multiinequalityplayground',
         http_method='GET', name='multiInequalityPlayground')
     def multiInequalityPlayground(self, request):
-        sessions = MultiInequalityQuery(Session) \
+        sessions = MultiPropInequality(Session) \
             .filter(Session.typeOfSession!='WORKSHOP') \
             .filter(Session.startTime<=datetime.strptime('19:00', "%H:%M").time()) \
             .filter(Session.startTime>=datetime.strptime('17:00', "%H:%M").time())
