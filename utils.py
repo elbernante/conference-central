@@ -282,6 +282,8 @@ class MultiPropInequality(object):
                 output.append(self._make_or_evaluator(f_n))
             elif isinstance(f_n, ndb.query.FilterNode):
                 output.append(self._make_evaluator(f_n))
+            # FalseNode is ignored
+            # ParameterNode is not yet supported
         return output
 
 

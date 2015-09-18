@@ -97,8 +97,19 @@ indexes:
 
 - kind: Session
   properties:
+  - name: highlights
+  - name: typeOfSession
+  - name: duration
+
+- kind: Session
+  properties:
   - name: startTime
   - name: typeOfSession
+
+- kind: Session
+  properties:
+  - name: typeOfSession
+  - name: duration
 
 - kind: Session
   ancestor: yes

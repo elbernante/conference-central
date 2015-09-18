@@ -1061,16 +1061,33 @@ class ConferenceApi(remote.Service):
         path='multiinequalityplayground',
         http_method='GET', name='multiInequalityPlayground')
     def multiInequalityPlayground(self, request):
+        """Multi-property inequality playground"""
+        # Multi inequality mixed with equality query:
+        # sessions = MultiPropInequality(Session) \
+        #     .filter(Session.duration<=90) \
+        #     .filter(Session.typeOfSession=='LECTURE') \
+        #     .filter(Session.date<=datetime.strptime('2015-09-05', '%Y-%m-%d').date())
+
+        # Multi inequality with search by ancestor
+        # parent = ndb.Key(Conference, 'some_key')
+        # sessions = MultiPropInequality(Session.query(ancestor=parent)) \
+        #     .filter(Session.duration<=60) \
+        #     .filter(Session.typeOfSession!='LECTURE') 
+
+        # Multi inequality with Pre-built query:
+        # sessions = Session.query().filter(Session.duration<=60)
+        # sessions = MultiPropInequality(sessions) \
+        #      .filter(Session.typeOfSession!='LECTURE')
+
+        # Query for all non-workshop before 7pm
         sessions = MultiPropInequality(Session) \
             .filter(Session.typeOfSession!='WORKSHOP') \
-            .filter(Session.startTime<=datetime.strptime('19:00', "%H:%M").time()) \
-            .filter(Session.startTime>=datetime.strptime('17:00', "%H:%M").time())
+            .filter(Session.startTime<datetime.strptime('19:00', '%H:%M').time())
 
         return SessionForms(
             items=[self._copySessionToForm(session) \
                     for session in sessions]
         )
-
 
 
 api = endpoints.api_server([ConferenceApi]) # register API
