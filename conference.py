@@ -1037,7 +1037,7 @@ class ConferenceApi(remote.Service):
         path='session/get/date/{websafeConferenceKey}/{startDate}/{endDate}',
         http_method='GET', name='getConferenceSessionsByDate')
     def getConferenceSessionsByDate(self, request):
-        """Returns all sessions in a conference that start is happening between
+        """Returns all sessions in a conference that is happening between
         a given date range
         """
 
