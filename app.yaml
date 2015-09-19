@@ -30,6 +30,9 @@ handlers:       # static then dynamic
   upload: templates/index\.html
   secure: always
 
+- url: /tasks/check_speaker
+  script: main.app
+
 - url: /tasks/send_confirmation_email
   script: main.app
 

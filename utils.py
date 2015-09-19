@@ -85,9 +85,9 @@ class MultiPropInequality(object):
 
         query = query.filter(Model.prop1!=0)    # Not necessary
 
-        query.filter(Model.prop1!=0)            # [better] query is updated
+        query.filter(Model.prop1!=0)            # (better) query is updated
 
-    To access the result, iterate through:
+    To access the result set, iterate through:
 
         for result in query:
             # do something with result
@@ -126,7 +126,7 @@ class MultiPropInequality(object):
 
         Parameters:
             args - Optional. Node. Can be instances of any of the subclasess of
-                   Node (e.g. FilterNode, ConjunctionNode, DisjunctionNode)
+                   Node (e.g. FilterNode, ConjunctionNode, DisjunctionNode).
 
         Returns the instance of this class.
         """
@@ -288,7 +288,7 @@ class MultiPropInequality(object):
 
 
     def __iter__(self):
-        """Iterate through the result set of the underlying query, and hands
+        """Iterates through the result set of the underlying query, and hands
         back only those that satify all of the post inequality filters.
         """
         post_evaluator = self._make_and_evaluator(self.post_inq_filters)

@@ -37,8 +37,18 @@ class SendConfirmationEmailHandler(webapp2.RequestHandler):
                 'conferenceInfo')
         )
 
+class CheckSpeakerHandler(webapp2.RequestHandler):
+    def post(self):
+        """Check if a speaker has more than one sessions in the conference.
+        If so, set the speaker as featured.
+        """
+        ConferenceApi._should_feature_speaker(
+            self.request.get('websafeSpeakerKey'),
+            self.request.get('websafeConferenceKey')
+        )
 
 app = webapp2.WSGIApplication([
     ('/crons/set_announcement', SetAnnouncementHandler),
     ('/tasks/send_confirmation_email', SendConfirmationEmailHandler),
+    ('/tasks/check_speaker', CheckSpeakerHandler)
 ], debug=True)
