@@ -6,11 +6,6 @@ indexes:
   properties:
   - name: typeOfSession
 
-# used by getSessionsBySpeaker()
-- kind: Session
-  properties:
-  - name: websafeSpeakerKey
-
 # used by getConferenceSessionsByDuration()
 - kind: Session
   ancestor: yes
