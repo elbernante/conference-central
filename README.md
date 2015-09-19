@@ -33,11 +33,11 @@ git clone https://github.com/elbernante/conference-central.git
 
 After getting the source code, the app can be launched using **GoogleAppEngineLauncher**
 
-1. Launch GoogleAppEngineLauncher app
-2. Click File -> Add Existing Application
-3. Browse and select folder of source code
-4. Select app from the list (**fab-proj-102116**)
-5. Click **Run**
+1. Launch GoogleAppEngineLauncher app.
+2. Click File -> Add Existing Application.
+3. Browse and select folder of the source code (**conference-central**).
+4. Select app from the list (**fab-proj-102116**).
+5. Click **Run**.
 
 The server should now be up and running and can be accessed through ```http://localhost:8080```. The port may change if it is already in use.
 
