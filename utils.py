@@ -54,7 +54,7 @@ class MultiPropInequality(object):
 
     NOTE: GQL is not supported.
 
-    The original resulst set returned by the underlying query will be filtered
+    The original result set returned by the underlying query will be filtered
     using post filters. Only those results that satisfy all of the post filters
     will be handed back.
 
@@ -147,10 +147,7 @@ class MultiPropInequality(object):
         inequality can be found.
         """
         inequalities = self._get_inequalities(f_node)
-        if len(inequalities) == 0:
-            return None
-        else:
-            return inequalities[0]
+        return None if len(inequalities) == 0 else inequalities[0]
 
 
     def _get_inequalities(self, f_node):
@@ -178,20 +175,19 @@ class MultiPropInequality(object):
         filters. If filter_node is the first inequality, returns False.
         """
         inequalities = self._get_inequalities(filter_node)
-        put_to_post = False
+        push_to_post = False
 
         for inq in inequalities:
             if not self.first_inequality:
                 self.first_inequality = inq
-            else:
-                self.first_inequality['name'] != inq['name']
-                put_to_post = True
+            elif self.first_inequality['name'] != inq['name']:
+                push_to_post = True
                 break
 
-        if put_to_post:
+        if push_to_post:
             self.post_inq_filters.append(filter_node)
 
-        return put_to_post
+        return push_to_post
 
 
     def _node_to_dict(self, f_node):
@@ -246,7 +242,7 @@ class MultiPropInequality(object):
 
     def _make_and_evaluator(self, con_node):
         """Returns an evaluator that performs AND operation on subnodes of a
-        givien ConjunctionNode
+        given ConjunctionNode
         """
         post_evals = self._check_node(con_node)
         def and_evaluators(x):
