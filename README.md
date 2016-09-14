@@ -1,9 +1,7 @@
 Conference Central
 ======================================
 
-Scalable application running on Google App Engine platform.
-Project 4 for Udacity Full Stack Nano Degree.
-Developed with Python.
+Conference scheduler application designed to be scalable, running on Google App Engine platform. Developed with Python.
 
 
 Setting Up
@@ -52,7 +50,7 @@ You can directly access the deployed app at:
 Answers to Project Questions
 --------------------------------------
 
-### Task 1: Design Choice
+### Design Choice
 
 The speaker is implemented as a full-pledged entity represented by  `Speaker()` class which inherits from `ndb.Model()` class. Making the speaker as a full-pledged entity allows adding more information about the speaker (e.g. biography and link to professional profile). It also allows adding speakers with the same name (which could happen) while remain distinguishable as different speakers.
 
@@ -71,18 +69,18 @@ Two helper classes `SpeakerForm()` and `SpeakerForms()` for creating and queryin
 The `Session` entity is implemented as a child for `Conference` entity since a session always belongs to a conference. It is therefore ideal to implement an “ancestor” relationship between conference and session. “websafeSpeakerKey” is used to link a speaker to the session for easy retrieval of the speaker information.   The “highlights” property is implemented as “repeated” since there could be more than 1 highlight in the session. The rest of the properties are declared based on their intuitive data types.
 
 
-### Task 3: Additional Queries
+### API Queries
 
-##### First query:
+##### Sessions by duration:
 `getConferenceSessionsByDuration(websafeConferenceKey, duration)`
 Returns all sessions in a conference that don't last longer than x minutes.
 
-##### Second query:
+##### Sessions by date:
 `getConferenceSessionsByDate(websafeConferenceKey, startDate, endDate)`
 Returns all sessions in a conference that is happening between a given date range.
 
 
-### Task 3: Query Problem
+### Advance Technical Queries: Type of Session within Time Range
 
 The query would require operating inequalities on 2 properties (i.e. `typeOfSession` and `startTime`), which would raise an error when executed on the datastore. The datastore has limitation where you can only apply inequality queries on at most 1 property.
 
